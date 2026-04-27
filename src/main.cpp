@@ -16,12 +16,16 @@
 #define TFT_RST       14
 #define TP_CS         21
 // #define TP_IRQ        
+#define TIME_STRING_SIZE 128
 
 TFT tft;
 
+char localTimeString[TIME_STRING_SIZE];
+char worldTimeString[TIME_STRING_SIZE];
+
 #define LED_BUILTIN 5
 
-void printLocalTime();
+void updateTime();
 // put function declarations here:
 // int myFunction(int, int);
 
@@ -34,7 +38,7 @@ void setup() {
   tft.begin(TFT_CS, TFT_DC, VSPI, SPI_MOSI, SPI_MISO, SPI_SCK);
   tft.setRotation(1);
   tft.fillScreen(TFT_DEEPSKYBLUE);
-  tft.setFont(Times_New_Roman56x46);
+  tft.setFont(Times_New_Roman27x21);
   tft.setTextColor(TFT_WHITE);
   tft.setCursor(20, 30);
   tft.println("PENIS ACTIVATING!!!");
@@ -60,28 +64,46 @@ void setup() {
 
   Serial.println("Connecting to NTP Server...");
   configTime(GMT_OFFSET, DST_OFFSET, NTP_SERV);
-  printLocalTime();
-
   pinMode (LED_BUILTIN, OUTPUT);
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  // for(uint8_t rotation=0; rotation <4; rotation++){
-  //   tft.setRotation(rotation);
-  //   tft.fillScreen(TFT_BLACK);
-  //   tft.setCursor(20,30);
-  //   tft.print("PENIS!!!");
-  //   delay(3000);
-  // }
+  updateTime();
+  tft.fillScreen(TFT_DEEPSKYBLUE);
+  tft.setCursor(20,30);
+  tft.println(localTimeString);
+  tft.println(worldTimeString);
+  delay(1000);
 }
 
 // put function definitions here:
-void printLocalTime() {
-  struct tm timeinfo;
-  if(!getLocalTime(&timeinfo)){
-    Serial.println("NTP connection failed.");
+void updateTime() {
+  struct tm gmttimeInfo;
+  struct tm *tmpTimeInfo;
+  struct tm worldTimeInfo;
+  struct tm localTimeInfo;
+  time_t timeSeconds;
+
+  if(!getLocalTime(&gmttimeInfo)){
     return;
   }
-  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
+  timeSeconds = mktime(&gmttimeInfo);
+  time_t localTimeSeconds = timeSeconds + (LOCAL_GMT_OFFSET * 3600);
+  tmpTimeInfo = localtime(&localTimeSeconds);
+  memcpy(&localTimeInfo, tmpTimeInfo, sizeof(struct tm));
+  time_t worldTimeSeconds = timeSeconds + (WORLD_GMT_OFFSET * 3600);
+  tmpTimeInfo = localtime(&worldTimeSeconds);
+  memcpy(&worldTimeInfo, tmpTimeInfo, sizeof(struct tm));
+
+
+  memset(&localTimeString, 0, TIME_STRING_SIZE);
+  memset(&worldTimeString, 0, TIME_STRING_SIZE);
+
+  strftime((char *)&localTimeString, TIME_STRING_SIZE, "%A, %B %d %Y %H:%M:%S", &localTimeInfo);
+  strftime((char *)&worldTimeString, TIME_STRING_SIZE, "%A, %B %d %Y %H:%M:%S", &worldTimeInfo);
+
+  Serial.println(localTimeString);
+  Serial.println(worldTimeString);
+
+  return;
 }
