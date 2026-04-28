@@ -2,7 +2,7 @@
 #include <WiFi.h>
 #include <time.h>
 #include <env.h>
-#include <lvgl.h>
+//#include <lvgl.h>
 #include <TFT_eSPI.h>
 
 //Display Defines
@@ -14,7 +14,7 @@
 // // GPIOs for TFT/TP
 // #define TFT_CS        22
 // #define TFT_DC        12
-#define TFT_RST       14
+//#define TFT_RST       14
 // #define TP_CS         21
 
 #define TIME_STRING_SIZE 128
@@ -25,8 +25,6 @@ TFT_eSPI tft = TFT_eSPI();
 char localTimeString[TIME_STRING_SIZE];
 char worldTimeString[TIME_STRING_SIZE];
 
-#define LED_BUILTIN 5
-
 uint32_t get_millis();
 void updateTime();
 
@@ -36,16 +34,11 @@ void setup() {
   Serial.begin(115200);
   
   tft.init();
-
-  setup_t settings;
-  tft.getSetup(settings);
-  Serial.println(settings.pin_tft_clk && settings.pin_tft_cs && settings.pin_tft_dc);
-
-  tft.setRotation(1);
+  tft.setRotation(3);
   tft.fillScreen(TFT_PURPLE);
-  // tft.setTextColor(TFT_WHITE);
-  // tft.setCursor(20, 30);
-  // tft.println("PENIS ACTIVATING!!!");
+  tft.setTextColor(TFT_WHITE);
+  tft.setCursor(20, 30);
+  tft.println("PENIS ACTIVATING!!!");
 
   //LVGL Initialization
   // lv_init();
@@ -55,10 +48,9 @@ void setup() {
   // lv_display_set_buffers(display, buf, NULL, LV_DISPLAY_RENDER_MODE_PARTIAL);
   //lv_display_set_flush_cb(display, );
 
-
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
-
+  
   while(WiFi.status() != WL_CONNECTED){
     tft.fillScreen(TFT_PURPLE);
     tft.setCursor(20, 30);
@@ -66,6 +58,7 @@ void setup() {
     tft.println("CONNECTING PENIS TO WIFI >:3");
     delay(1200);
   }
+
   tft.fillScreen(TFT_PURPLE);
   Serial.println("Successfully connected to WiFI at Address:");
   Serial.println(WiFi.localIP());
@@ -77,14 +70,14 @@ void setup() {
 }
 
 void loop() {
-  // updateTime();
-  // tft.fillScreen(TFT_PURPLE);
-  // tft.setCursor(20,30);
-  // tft.println("The local time is:");
-  // tft.println(localTimeString);
-  // tft.println("The world time is:");
-  // tft.println(worldTimeString);
-  // delay(1000);
+  updateTime();
+  tft.fillScreen(TFT_PURPLE);
+  tft.setCursor(20,30);
+  tft.println("The local time is:");
+  tft.println(localTimeString);
+  tft.println("The world time is:");
+  tft.println(worldTimeString);
+  delay(1000);
 }
 
 void updateTime() {
