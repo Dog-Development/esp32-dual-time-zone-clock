@@ -1,29 +1,33 @@
 #include <Arduino.h>
-#include <ili9486.h>
 #include <WiFi.h>
 #include <time.h>
 #include <env.h>
+#include <lvgl.h>
+#include <TFT_eSPI.h>
 
 //Display Defines
 //GPIOs for SPI
-#define SPI_MOSI      23
-#define SPI_MISO      19
-#define SPI_SCK       18
+// #define SPI_MOSI      23
+// #define SPI_MISO      19
+// #define SPI_SCK       18
 
-// GPIOs for TFT/TP
-#define TFT_CS        22
-#define TFT_DC        12
+// // GPIOs for TFT/TP
+// #define TFT_CS        22
+// #define TFT_DC        12
 #define TFT_RST       14
-#define TP_CS         21
+// #define TP_CS         21
+
 #define TIME_STRING_SIZE 128
 
-TFT tft;
+// TFT tft;
+TFT_eSPI tft = TFT_eSPI();
 
 char localTimeString[TIME_STRING_SIZE];
 char worldTimeString[TIME_STRING_SIZE];
 
 #define LED_BUILTIN 5
 
+uint32_t get_millis();
 void updateTime();
 
 void setup() {
@@ -31,27 +35,38 @@ void setup() {
   
   Serial.begin(115200);
   
-  pinMode(TFT_RST, OUTPUT);
-  digitalWrite(TFT_RST, HIGH);
-  tft.begin(TFT_CS, TFT_DC, VSPI, SPI_MOSI, SPI_MISO, SPI_SCK);
+  tft.init();
+
+  setup_t settings;
+  tft.getSetup(settings);
+  Serial.println(settings.pin_tft_clk && settings.pin_tft_cs && settings.pin_tft_dc);
+
   tft.setRotation(1);
-  tft.fillScreen(TFT_DEEPSKYBLUE);
-  tft.setFont(Times_New_Roman27x21);
-  tft.setTextColor(TFT_WHITE);
-  tft.setCursor(20, 30);
-  tft.println("PENIS ACTIVATING!!!");
+  tft.fillScreen(TFT_PURPLE);
+  // tft.setTextColor(TFT_WHITE);
+  // tft.setCursor(20, 30);
+  // tft.println("PENIS ACTIVATING!!!");
+
+  //LVGL Initialization
+  // lv_init();
+  // lv_tick_set_cb(get_millis);
+  // lv_display_t * display = lv_display_create(480, 320);
+  // static uint8_t buf[480 * 320 / 10 * 2];
+  // lv_display_set_buffers(display, buf, NULL, LV_DISPLAY_RENDER_MODE_PARTIAL);
+  //lv_display_set_flush_cb(display, );
+
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
 
   while(WiFi.status() != WL_CONNECTED){
-    tft.fillScreen(TFT_DEEPSKYBLUE);
+    tft.fillScreen(TFT_PURPLE);
     tft.setCursor(20, 30);
     Serial.println("Connecting to WiFi...");
     tft.println("CONNECTING PENIS TO WIFI >:3");
     delay(1200);
   }
-  tft.fillScreen(TFT_DEEPSKYBLUE);
+  tft.fillScreen(TFT_PURPLE);
   Serial.println("Successfully connected to WiFI at Address:");
   Serial.println(WiFi.localIP());
   tft.println("PENIS CONNECTED (TO WIFI) UWU~!");
@@ -62,14 +77,14 @@ void setup() {
 }
 
 void loop() {
-  updateTime();
-  tft.fillScreen(TFT_DEEPSKYBLUE);
-  tft.setCursor(20,30);
-  tft.println("The local time is:");
-  tft.println(localTimeString);
-  tft.println("The world time is:");
-  tft.println(worldTimeString);
-  delay(1000);
+  // updateTime();
+  // tft.fillScreen(TFT_PURPLE);
+  // tft.setCursor(20,30);
+  // tft.println("The local time is:");
+  // tft.println(localTimeString);
+  // tft.println("The world time is:");
+  // tft.println(worldTimeString);
+  // delay(1000);
 }
 
 void updateTime() {
@@ -100,3 +115,11 @@ void updateTime() {
 
   return;
 }
+// uint32_t get_millis(){
+//     return esp_timer_get_time() / 1000;
+// }
+
+// void flush(lv_display_t * disp, const lv_area_t * area, uint8_t * px_buf){
+//   display_update(area, px_buf);
+//   lv_display_flush_ready();
+// }
