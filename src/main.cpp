@@ -18,6 +18,10 @@
 // #define TP_CS         21
 
 #define TIME_STRING_SIZE 128
+#define BYTES_PER_PIXEL (LV_COLOR_FORMAT_GET_SIZE(LV_COLOR_FORMAT_RGB565_SWAPPED))
+#define DISPLAY_BUFFER_SIZE (TFT_WIDTH * TFT_HEIGHT / 10 * BYTES_PER_PIXEL)
+
+uint8_t *buf;
 
 // TFT tft;
 TFT_eSPI tft = TFT_eSPI();
@@ -28,63 +32,75 @@ char worldTimeString[TIME_STRING_SIZE];
 uint32_t get_millis();
 void updateTime();
 void flush(lv_display_t * disp, const lv_area_t * area, uint8_t * px_buf);
+void readInput(lv_indev_t * indev, lv_indev_data_t * data);
 
 void setup() {
-  pinMode (LED_BUILTIN, OUTPUT);
-  
   Serial.begin(115200);
   
   tft.init();
   tft.setRotation(3);
-  tft.fillScreen(TFT_PURPLE);
-  tft.setTextColor(TFT_WHITE);
-  tft.setCursor(20, 30);
-  tft.println("PENIS ACTIVATING!!!");
 
+  
   //LVGL Initialization
+  Serial.println("Beginning LVGL Initialization...");
   lv_init();
   lv_tick_set_cb(get_millis);
-  lv_display_t * display = lv_display_create(TFT_WIDTH, TFT_HEIGHT);
-  static uint8_t buf[TFT_WIDTH * 40];
-  lv_display_set_buffers(display, buf, NULL, (TFT_WIDTH * 40), LV_DISPLAY_RENDER_MODE_PARTIAL);
+  lv_display_t * display = lv_display_create(TFT_HEIGHT, TFT_WIDTH);
+  lv_display_set_color_format(display, LV_COLOR_FORMAT_RGB565_SWAPPED);
+  buf = (uint8_t *)calloc(DISPLAY_BUFFER_SIZE, 1);
+  lv_display_set_buffers(display, buf, NULL, DISPLAY_BUFFER_SIZE, LV_DISPLAY_RENDER_MODE_PARTIAL);
   lv_display_set_flush_cb(display, flush);
+  Serial.println("LVGL Initialized.");
+  
+  //LVGL Input Device Initialization
+  Serial.println("Beginning LVGL Input Device Initialization...");
+  lv_indev_t * indev = lv_indev_create();
+  lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
+  lv_indev_set_read_cb(indev, readInput);
+  Serial.println("LVGL Input Device Initialized.");
+
+  //Home Screen Setup
+  lv_obj_set_style_bg_color(lv_screen_active(), lv_color_hex(0x8F00FF), LV_PART_MAIN);
+  lv_obj_set_style_text_color(lv_screen_active(), lv_color_hex(0xffffff), LV_PART_MAIN);
+  lv_obj_set_layout(lv_screen_active(), LV_LAYOUT_FLEX);
+  lv_obj_set_style_pad_all(lv_screen_active(), 10, LV_PART_MAIN);
+  lv_obj_t * clocks = lv_obj_create(lv_screen_active());
+  lv_obj_set_style_bg_color(clocks, lv_color_hex(0xffffff), LV_PART_MAIN);
+  lv_obj_t * localClock = lv_obj_create(clocks);
+  lv_obj_set_width(localClock, 120);
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
-
+  
   while(WiFi.status() != WL_CONNECTED){
-    // tft.fillScreen(TFT_PURPLE);
-    // tft.setCursor(20, 30);
-    // tft.println("CONNECTING PENIS TO WIFI >:3");
     Serial.println("Connecting to WiFi...");
-    lv_obj_set_style_bg_color(lv_screen_active(), lv_color_hex(0x003a59), LV_PART_MAIN);
-    lv_obj_set_style_text_color(lv_screen_active(), lv_color_hex(0xffffff), LV_PART_MAIN);
-    lv_obj_t * label = lv_label_create(lv_screen_active());
-    lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
-    lv_label_set_text(label, "CONNECTING PENIS TO WIFI >:3");
-    delay(1200);
+    delay(500);
   }
-
-  // tft.fillScreen(TFT_PURPLE);
-  // tft.println("PENIS CONNECTED (TO WIFI) UWU~!");
-  // tft.println(WiFi.localIP());
   Serial.println("Successfully connected to WiFI at Address:");
   Serial.println(WiFi.localIP());
 
-  Serial.println("Connecting to NTP Server...");
   configTime(GMT_OFFSET, DST_OFFSET, NTP_SERV);
+  Serial.println("Connecting to NTP Server...");
+  
 }
 
 void loop() {
   updateTime();
-  // tft.fillScreen(TFT_PURPLE);
-  // tft.setCursor(20,30);
-  // tft.println("The local time is:");
-  // tft.println(localTimeString);
-  // tft.println("The world time is:");
-  // tft.println(worldTimeString);
   lv_timer_handler();
-  delay(1000);
+  delay(17);
+}
+
+void readInput(lv_indev_t * indev, lv_indev_data_t * data){
+  uint16_t x;
+  uint16_t y;
+  if(tft.getTouch(&x, &y) != 0){
+    data->point.x = x;
+    data->point.y = y;
+    data->state = LV_INDEV_STATE_PRESSED;
+    Serial.println("Touch Detected");
+  } else {
+    data->state = LV_INDEV_STATE_RELEASED;
+  }
 }
 
 void updateTime() {
@@ -108,20 +124,20 @@ void updateTime() {
   worldTimeInfo = localtime(&worldTimeSeconds);
   strftime((char *)&worldTimeString, TIME_STRING_SIZE, "%A, %B %d %Y %H:%M:%S", worldTimeInfo);
 
-  Serial.println("The local time is:");
-  Serial.println(localTimeString);
-  Serial.println("The world time is:");
-  Serial.println(worldTimeString);
-
   return;
 }
+
 uint32_t get_millis(){
     return esp_timer_get_time() / 1000;
 }
 
 void flush(lv_display_t * disp, const lv_area_t * area, uint8_t * px_buf){
-  tft.setAddrWindow(0, 0, TFT_WIDTH, TFT_HEIGHT);
-  tft.pushColors((uint16_t *)px_buf, (TFT_WIDTH * TFT_HEIGHT));
+  uint32_t w = area->x2 - area->x1 + 1;
+  uint32_t h = area->y2 - area->y1 + 1;
+  tft.startWrite();
+  tft.setAddrWindow(area->x1, area->y1, w, h);
+  tft.pushPixels(px_buf, w * h);
+  tft.endWrite();
   lv_display_flush_ready(disp);
 }
 
