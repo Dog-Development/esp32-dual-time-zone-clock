@@ -3,6 +3,7 @@
 #include <time.h>
 #include <env.h>
 #include <lvgl.h>
+#include <lvgl_styles.h>
 #include <TFT_eSPI.h>
 
 //Display Defines
@@ -26,11 +27,14 @@ uint8_t *buf;
 // TFT tft;
 TFT_eSPI tft = TFT_eSPI();
 
-char localTimeString[TIME_STRING_SIZE];
-char worldTimeString[TIME_STRING_SIZE];
+char *localTimeString;
+char *worldTimeString;
+
+lv_obj_t * localClockTime;
+lv_obj_t * worldClockTime;
 
 uint32_t get_millis();
-void updateTime();
+void updateTime(char *localTimeString, char *worldTimeString);
 void flush(lv_display_t * disp, const lv_area_t * area, uint8_t * px_buf);
 void readInput(lv_indev_t * indev, lv_indev_data_t * data);
 
@@ -40,7 +44,9 @@ void setup() {
   tft.init();
   tft.setRotation(3);
 
-  
+  localTimeString = (char *)malloc(TIME_STRING_SIZE);
+  worldTimeString = (char *)malloc(TIME_STRING_SIZE);
+
   //LVGL Initialization
   Serial.println("Beginning LVGL Initialization...");
   lv_init();
@@ -60,14 +66,25 @@ void setup() {
   Serial.println("LVGL Input Device Initialized.");
 
   //Home Screen Setup
-  lv_obj_set_style_bg_color(lv_screen_active(), lv_color_hex(0x8F00FF), LV_PART_MAIN);
-  lv_obj_set_style_text_color(lv_screen_active(), lv_color_hex(0xffffff), LV_PART_MAIN);
-  lv_obj_set_layout(lv_screen_active(), LV_LAYOUT_FLEX);
-  lv_obj_set_style_pad_all(lv_screen_active(), 10, LV_PART_MAIN);
+  setStyles();
   lv_obj_t * clocks = lv_obj_create(lv_screen_active());
-  lv_obj_set_style_bg_color(clocks, lv_color_hex(0xffffff), LV_PART_MAIN);
   lv_obj_t * localClock = lv_obj_create(clocks);
-  lv_obj_set_width(localClock, 120);
+  lv_obj_t * worldClock = lv_obj_create(clocks);
+  localClockTime = lv_label_create(localClock);
+  worldClockTime = lv_label_create(worldClock);
+  lv_obj_set_layout(lv_screen_active(), LV_LAYOUT_FLEX);
+  lv_obj_set_width(clocks, lv_pct(100));
+  lv_obj_set_height(clocks, lv_pct(100));
+  lv_obj_set_layout(clocks, LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(clocks, LV_FLEX_FLOW_COLUMN);
+  lv_obj_add_style(lv_screen_active(), &style_home, 0);
+  lv_obj_add_style(clocks, &style_home, 0);
+  lv_obj_add_style(localClock, &style_clockContainers, 0);
+  lv_obj_add_style(worldClock, &style_clockContainers, 0);
+  lv_obj_add_style(localClockTime, &style_clocks, 0);
+  lv_obj_add_style(worldClockTime, &style_clocks, 0);
+  lv_label_set_text(localClockTime, "Fetching Time...");
+  lv_label_set_text(worldClockTime, "Fetching Time...");
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
@@ -85,12 +102,14 @@ void setup() {
 }
 
 void loop() {
-  updateTime();
+  updateTime(localTimeString, worldTimeString);
+  lv_label_set_text(localClockTime, localTimeString);
+  lv_label_set_text(worldClockTime, worldTimeString);
   lv_timer_handler();
   delay(17);
 }
 
-void readInput(lv_indev_t * indev, lv_indev_data_t * data){
+void readInput(lv_indev_t * indev, lv_indev_data_t * data) {
   uint16_t x;
   uint16_t y;
   if(tft.getTouch(&x, &y) != 0){
@@ -103,14 +122,18 @@ void readInput(lv_indev_t * indev, lv_indev_data_t * data){
   }
 }
 
-void updateTime() {
+void updateTime(char *localTimeString, char *worldTimeString) {
   struct tm gmttimeInfo;
   struct tm *worldTimeInfo;
   struct tm *localTimeInfo;
   time_t timeSeconds;
+  
+  if(localTimeString == NULL || worldTimeString == NULL) {
+    return;
+  }
 
-  memset(&localTimeString, 0, TIME_STRING_SIZE);
-  memset(&worldTimeString, 0, TIME_STRING_SIZE);
+  memset(localTimeString, 0, TIME_STRING_SIZE);
+  memset(worldTimeString, 0, TIME_STRING_SIZE);
   
   if(!getLocalTime(&gmttimeInfo)){
     return;
@@ -119,11 +142,11 @@ void updateTime() {
   timeSeconds = mktime(&gmttimeInfo);
   time_t localTimeSeconds = timeSeconds + (LOCAL_GMT_OFFSET * 3600);
   localTimeInfo = localtime(&localTimeSeconds);
-  strftime((char *)&localTimeString, TIME_STRING_SIZE, "%A, %B %d %Y %H:%M:%S", localTimeInfo);
+  strftime(localTimeString, TIME_STRING_SIZE, "%A, %B %d %Y %H:%M:%S", localTimeInfo);
   time_t worldTimeSeconds = timeSeconds + (WORLD_GMT_OFFSET * 3600);
   worldTimeInfo = localtime(&worldTimeSeconds);
-  strftime((char *)&worldTimeString, TIME_STRING_SIZE, "%A, %B %d %Y %H:%M:%S", worldTimeInfo);
-
+  strftime(worldTimeString, TIME_STRING_SIZE, "%A, %B %d %Y %H:%M:%S", worldTimeInfo);
+  
   return;
 }
 
