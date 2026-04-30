@@ -37,18 +37,15 @@ uint32_t get_millis();
 void updateTime(char *localTimeString, char *worldTimeString);
 void flush(lv_display_t * disp, const lv_area_t * area, uint8_t * px_buf);
 void readInput(lv_indev_t * indev, lv_indev_data_t * data);
+void clockRefresh(lv_timer_t * timer);
 
 void setup() {
   Serial.begin(115200);
   
-  tft.init();
-  tft.setRotation(3);
-
   localTimeString = (char *)malloc(TIME_STRING_SIZE);
   worldTimeString = (char *)malloc(TIME_STRING_SIZE);
 
   //LVGL Initialization
-  Serial.println("Beginning LVGL Initialization...");
   lv_init();
   lv_tick_set_cb(get_millis);
   lv_display_t * display = lv_display_create(TFT_HEIGHT, TFT_WIDTH);
@@ -56,22 +53,25 @@ void setup() {
   buf = (uint8_t *)calloc(DISPLAY_BUFFER_SIZE, 1);
   lv_display_set_buffers(display, buf, NULL, DISPLAY_BUFFER_SIZE, LV_DISPLAY_RENDER_MODE_PARTIAL);
   lv_display_set_flush_cb(display, flush);
-  Serial.println("LVGL Initialized.");
   
   //LVGL Input Device Initialization
-  Serial.println("Beginning LVGL Input Device Initialization...");
   lv_indev_t * indev = lv_indev_create();
   lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
   lv_indev_set_read_cb(indev, readInput);
-  Serial.println("LVGL Input Device Initialized.");
 
   //Home Screen Setup
   setStyles();
   lv_obj_t * clocks = lv_obj_create(lv_screen_active());
   lv_obj_t * localClock = lv_obj_create(clocks);
   lv_obj_t * worldClock = lv_obj_create(clocks);
+  lv_obj_t * localClockIcon = lv_image_create(localClock);
+  lv_obj_t * worldClockIcon = lv_image_create(worldClock);
   localClockTime = lv_label_create(localClock);
   worldClockTime = lv_label_create(worldClock);
+  lv_image_set_src(localClockIcon, &poland);
+  lv_image_set_src(worldClockIcon, &unitedStates);
+  lv_image_set_scale(localClockIcon, 192);
+  lv_image_set_scale(worldClockIcon, 192);
   lv_obj_set_layout(lv_screen_active(), LV_LAYOUT_FLEX);
   lv_obj_set_width(clocks, lv_pct(100));
   lv_obj_set_height(clocks, lv_pct(100));
@@ -83,30 +83,24 @@ void setup() {
   lv_obj_add_style(worldClock, &style_clockContainers, 0);
   lv_obj_add_style(localClockTime, &style_clocks, 0);
   lv_obj_add_style(worldClockTime, &style_clocks, 0);
+  lv_obj_add_style(localClockIcon, &style_regionIcons, 0);
+  lv_obj_add_style(worldClockIcon, &style_regionIcons, 0);
   lv_label_set_text(localClockTime, "Fetching Time...");
   lv_label_set_text(worldClockTime, "Fetching Time...");
+  lv_timer_t * clockRefreshTimer = lv_timer_create(clockRefresh, 1000, NULL);
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
-  
-  while(WiFi.status() != WL_CONNECTED){
-    Serial.println("Connecting to WiFi...");
-    delay(500);
-  }
-  Serial.println("Successfully connected to WiFI at Address:");
-  Serial.println(WiFi.localIP());
 
-  configTime(GMT_OFFSET, DST_OFFSET, NTP_SERV);
-  Serial.println("Connecting to NTP Server...");
-  
+  tft.init();
+  tft.setRotation(3);
+
+  configTime(GMT_OFFSET, DST_OFFSET, NTP_SERV);  
 }
 
 void loop() {
-  updateTime(localTimeString, worldTimeString);
-  lv_label_set_text(localClockTime, localTimeString);
-  lv_label_set_text(worldClockTime, worldTimeString);
   lv_timer_handler();
-  delay(17);
+  delay(20);
 }
 
 void readInput(lv_indev_t * indev, lv_indev_data_t * data) {
@@ -116,7 +110,6 @@ void readInput(lv_indev_t * indev, lv_indev_data_t * data) {
     data->point.x = x;
     data->point.y = y;
     data->state = LV_INDEV_STATE_PRESSED;
-    Serial.println("Touch Detected");
   } else {
     data->state = LV_INDEV_STATE_RELEASED;
   }
@@ -142,13 +135,20 @@ void updateTime(char *localTimeString, char *worldTimeString) {
   timeSeconds = mktime(&gmttimeInfo);
   time_t localTimeSeconds = timeSeconds + (LOCAL_GMT_OFFSET * 3600);
   localTimeInfo = localtime(&localTimeSeconds);
-  strftime(localTimeString, TIME_STRING_SIZE, "%A, %B %d %Y %H:%M:%S", localTimeInfo);
+  strftime(localTimeString, TIME_STRING_SIZE, "%H:%M:%S", localTimeInfo);
   time_t worldTimeSeconds = timeSeconds + (WORLD_GMT_OFFSET * 3600);
   worldTimeInfo = localtime(&worldTimeSeconds);
-  strftime(worldTimeString, TIME_STRING_SIZE, "%A, %B %d %Y %H:%M:%S", worldTimeInfo);
+  strftime(worldTimeString, TIME_STRING_SIZE, "%H:%M:%S", worldTimeInfo);
   
   return;
 }
+
+void clockRefresh(lv_timer_t * timer) {
+  updateTime(localTimeString, worldTimeString);
+  lv_label_set_text(localClockTime, localTimeString);
+  lv_label_set_text(worldClockTime, worldTimeString);
+
+};
 
 uint32_t get_millis(){
     return esp_timer_get_time() / 1000;
