@@ -5,6 +5,7 @@
 extern lv_style_t style_home;
 extern lv_style_t style_clockContainers;
 extern lv_style_t style_clocks;
+extern lv_style_t style_clocks_fetching;
 extern lv_style_t style_regionIcons;
 
 

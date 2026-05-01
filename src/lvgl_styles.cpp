@@ -3,6 +3,7 @@
 lv_style_t style_home;
 lv_style_t style_clockContainers;
 lv_style_t style_clocks;
+lv_style_t style_clocks_fetching;
 lv_style_t style_regionIcons;
 
 LV_FONT_DECLARE(ndot57_42);
@@ -38,6 +39,10 @@ void setStyles() {
     lv_style_set_flex_grow(&style_clocks, 1);
     lv_style_set_align(&style_clocks, LV_ALIGN_CENTER);
     lv_style_set_max_height(&style_clocks, lv_pct(100));
+
+    lv_style_init(&style_clocks_fetching);
+    lv_style_set_text_font(&style_clocks_fetching, &ndot57_42);
+    lv_style_set_text_color(&style_clocks_fetching, lv_color_hex(0x00f2de));
 
     lv_style_init(&style_regionIcons);
     lv_style_set_height(&style_regionIcons, lv_pct(100));

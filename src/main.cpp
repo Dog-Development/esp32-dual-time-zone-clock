@@ -81,12 +81,12 @@ void setup() {
   lv_obj_add_style(clocks, &style_home, 0);
   lv_obj_add_style(localClock, &style_clockContainers, 0);
   lv_obj_add_style(worldClock, &style_clockContainers, 0);
-  lv_obj_add_style(localClockTime, &style_clocks, 0);
-  lv_obj_add_style(worldClockTime, &style_clocks, 0);
   lv_obj_add_style(localClockIcon, &style_regionIcons, 0);
   lv_obj_add_style(worldClockIcon, &style_regionIcons, 0);
   lv_label_set_text(localClockTime, "Fetching Time...");
   lv_label_set_text(worldClockTime, "Fetching Time...");
+  lv_obj_add_style(localClockTime, &style_clocks_fetching, 0);
+  lv_obj_add_style(worldClockTime, &style_clocks_fetching, 0);
   lv_timer_t * clockRefreshTimer = lv_timer_create(clockRefresh, 1000, NULL);
 
   WiFi.mode(WIFI_STA);
@@ -139,6 +139,8 @@ void updateTime(char *localTimeString, char *worldTimeString) {
   time_t worldTimeSeconds = timeSeconds + (WORLD_GMT_OFFSET * 3600);
   worldTimeInfo = localtime(&worldTimeSeconds);
   strftime(worldTimeString, TIME_STRING_SIZE, "%H:%M:%S", worldTimeInfo);
+  lv_obj_add_style(localClockTime, &style_clocks, 0);
+  lv_obj_add_style(worldClockTime, &style_clocks, 0);
   
   return;
 }
@@ -147,7 +149,6 @@ void clockRefresh(lv_timer_t * timer) {
   updateTime(localTimeString, worldTimeString);
   lv_label_set_text(localClockTime, localTimeString);
   lv_label_set_text(worldClockTime, worldTimeString);
-
 };
 
 uint32_t get_millis(){
